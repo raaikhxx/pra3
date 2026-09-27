@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Админ-панель — STREET SHOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="header-top">
+        <button class="burger" type="button" aria-label="Меню">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
+        </button>
+
+        <a href="index.html" class="logo">Street Shop</a>
+
+        <form class="search" onsubmit="return false;">
+          <input type="search" placeholder="Поиск по товару, коллекции..." aria-label="Поиск">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.47 6.47 0 0 0 1.57-4.23A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+        </form>
+
+        <div class="header-actions">
+          <a href="login.html" class="icon-btn" aria-label="Войти" id="loginIcon">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.5c-3.3 0-9.9 1.6-9.9 4.9v2.4h19.8v-2.4c0-3.3-6.6-4.9-9.9-4.9z"/></svg>
+          </a>
+          <a href="profile.html" class="icon-btn" aria-label="Профиль" id="profileIcon" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.5c-3.3 0-9.9 1.6-9.9 4.9v2.4h19.8v-2.4c0-3.3-6.6-4.9-9.9-4.9z"/></svg>
+          </a>
+
+          <a href="#" class="icon-btn" aria-label="Избранное">
+            <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.35-10-9.5C.5 8 2.5 4.5 6 4.5c2 0 3.5 1 6 3.5 2.5-2.5 4-3.5 6-3.5 3.5 0 5.5 3.5 4 7-2.5 5.15-10 9.5-10 9.5z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <nav class="header-nav">
+        <a href="index.html">Главная</a>
+        <a href="cart.html">Корзина</a>
+        <a href="cabinet.html">Личный кабинет</a>
+      </nav>
+    </header>
+
+    <main>
+      <h2>Админ-панель</h2>
+
+      <div id="adminMessage"></div>
+
+      <section>
+        <h2>Добавить товар</h2>
+
+        <form id="productForm">
+          <input type="text" id="name" placeholder="Название товара" required />
+          <input type="text" id="description" placeholder="Описание" required />
+          <input type="number" id="price" placeholder="Цена" required />
+          <input type="text" id="category" placeholder="Категория" required />
+          <input type="text" id="image" placeholder="Ссылка на изображение" />
+          <input type="number" id="stock" placeholder="Количество" required />
+          <button type="submit">Добавить товар</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Товары</h2>
+        <div id="products"></div>
+      </section>
+
+      <section>
+        <h2>Заказы</h2>
+        <div id="orders"></div>
+      </section>
+
+      <section>
+        <h2>Пользователи</h2>
+        <div id="users"></div>
+      </section>
+    </main>
+
+    <script type="module" src="js/admin.js"></script>
+    <script type="module" src="js/auth.js"></script>
+  </body>
+</html>
