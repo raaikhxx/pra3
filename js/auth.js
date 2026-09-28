@@ -9,6 +9,7 @@ import {
 
 import {
   doc,
+  getDoc,
   setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -100,15 +101,30 @@ if (forgotLink) {
   });
 }
 
-onAuthStateChanged(auth, (user) => {
-  const profileLink = document.getElementById("profileLink");
-  const loginLink = document.getElementById("loginLink");
+onAuthStateChanged(auth, async (user) => {
+  const loginIcon = document.getElementById("loginIcon");
+  const profileIcon = document.getElementById("profileIcon");
+  const adminNavLink = document.getElementById("adminNavLink");
 
   if (user) {
-    if (profileLink) profileLink.style.display = "";
-    if (loginLink) loginLink.style.display = "none";
+    if (loginIcon) loginIcon.style.display = "none";
+    if (profileIcon) profileIcon.style.display = "";
+
+    if (adminNavLink) {
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists() && snap.data().role === "admin") {
+          adminNavLink.style.display = "";
+        } else {
+          adminNavLink.style.display = "none";
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
   } else {
-    if (profileLink) profileLink.style.display = "none";
-    if (loginLink) loginLink.style.display = "";
+    if (loginIcon) loginIcon.style.display = "";
+    if (profileIcon) profileIcon.style.display = "none";
+    if (adminNavLink) adminNavLink.style.display = "none";
   }
 });

@@ -4,9 +4,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
-  limit,
-  startAfter,
   getDocs,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -14,115 +11,79 @@ const productsContainer = document.getElementById("products");
 const searchInput = document.getElementById("search");
 const categorySelect = document.getElementById("category");
 const sortSelect = document.getElementById("sort");
-const loadMoreButton = document.getElementById("loadMore");
+const paginationContainer = document.getElementById("pagination");
 
-let products = [];
-let lastDoc = null;
-let loading = false;
+const PAGE_SIZE = 6;
 
-const pageSize = 5;
+let allProducts = [];
+let filtered = [];
+let currentPage = 1;
+let totalPages = 1;
 
-async function loadProducts(reset = false) {
-  if (loading) return;
-
-  loading = true;
-
-  if (reset) {
-    products = [];
-    lastDoc = null;
-    productsContainer.innerHTML = "";
-  }
-
+async function loadAllProducts() {
   try {
-    let productsQuery;
-
     const category = categorySelect.value;
-    const sort = sortSelect.value;
+    let q;
 
     if (category !== "all") {
-      productsQuery = query(
-        collection(db, "products"),
-        where("category", "==", category),
-        limit(pageSize)
-      );
+      q = query(collection(db, "products"), where("category", "==", category));
     } else {
-      productsQuery = query(collection(db, "products"), limit(pageSize));
+      q = query(collection(db, "products"));
     }
 
-    if (lastDoc) {
-      productsQuery = query(productsQuery, startAfter(lastDoc));
-    }
+    const snapshot = await getDocs(q);
 
-    const snapshot = await getDocs(productsQuery);
+    allProducts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    if (snapshot.empty && products.length === 0) {
-      productsContainer.textContent = "Товаров не найдено.";
-      loadMoreButton.style.display = "none";
-      loading = false;
+    if (!allProducts.length) {
+      productsContainer.innerHTML = "<p>Товаров не найдено.</p>";
+      paginationContainer.innerHTML = "";
       return;
     }
 
-    lastDoc = snapshot.docs[snapshot.docs.length - 1];
-
-    snapshot.forEach((productDoc) => {
-      products.push({
-        id: productDoc.id,
-        ...productDoc.data(),
-      });
-    });
-
-    renderProducts();
-
-    loadMoreButton.style.display = snapshot.size < pageSize ? "none" : "block";
+    applyFiltersAndRender();
   } catch (error) {
     console.error(error);
     productsContainer.textContent = "Не удалось загрузить товары.";
   }
-
-  loading = false;
 }
 
-function renderProducts() {
-  productsContainer.innerHTML = "";
-
-  let filteredProducts = [...products];
+function applyFiltersAndRender() {
+  filtered = [...allProducts];
 
   const search = searchInput.value.trim().toLowerCase();
-
   if (search) {
-    filteredProducts = filteredProducts.filter(
-      (product) =>
-        String(product.name || "")
-          .toLowerCase()
-          .includes(search) ||
-        String(product.description || "")
-          .toLowerCase()
-          .includes(search)
+    filtered = filtered.filter(
+      (p) =>
+        String(p.name || "").toLowerCase().includes(search) ||
+        String(p.description || "").toLowerCase().includes(search)
     );
   }
 
   const sort = sortSelect.value;
+  if (sort === "priceAsc") filtered.sort((a, b) => Number(a.price) - Number(b.price));
+  if (sort === "priceDesc") filtered.sort((a, b) => Number(b.price) - Number(a.price));
+  if (sort === "name") filtered.sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
-  if (sort === "priceAsc") {
-    filteredProducts.sort((a, b) => Number(a.price) - Number(b.price));
-  }
+  totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = 1;
 
-  if (sort === "priceDesc") {
-    filteredProducts.sort((a, b) => Number(b.price) - Number(a.price));
-  }
+  renderPage();
+  renderPagination();
+}
 
-  if (sort === "name") {
-    filteredProducts.sort((a, b) =>
-      String(a.name || "").localeCompare(String(b.name || ""))
-    );
-  }
+function renderPage() {
+  productsContainer.innerHTML = "";
 
-  if (!filteredProducts.length) {
-    productsContainer.textContent = "Товаров не найдено.";
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  if (!pageItems.length) {
+    productsContainer.innerHTML = "<p>Товаров не найдено.</p>";
     return;
   }
 
-  filteredProducts.forEach((product) => {
+  pageItems.forEach((product) => {
     const card = document.createElement("div");
     card.className = "product-card";
 
@@ -147,32 +108,93 @@ function renderProducts() {
     description.textContent = product.description || "";
 
     const price = document.createElement("strong");
-    price.textContent =
-      Number(product.price || 0).toLocaleString("ru-RU") + " ₸";
+    price.textContent = Number(product.price || 0).toLocaleString("ru-RU") + " ₸";
 
     const button = document.createElement("button");
     button.textContent = "Подробнее";
-
     button.addEventListener("click", () => {
       window.location.href = "product.html?id=" + product.id;
     });
 
     card.append(imageBlock, title, description, price, button);
-
     productsContainer.appendChild(card);
   });
 }
 
-searchInput.addEventListener("input", renderProducts);
+function renderPagination() {
+  paginationContainer.innerHTML = "";
 
-categorySelect.addEventListener("change", () => {
-  loadProducts(true);
+  if (totalPages <= 1) return;
+
+  const prev = document.createElement("button");
+  prev.textContent = "←";
+  prev.disabled = currentPage === 1;
+  prev.addEventListener("click", () => {
+    currentPage--;
+    applyFiltersAndRender();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  paginationContainer.appendChild(prev);
+
+  const pages = buildPageList(currentPage, totalPages);
+  pages.forEach((p) => {
+    if (p === "...") {
+      const dots = document.createElement("span");
+      dots.textContent = "…";
+      dots.style.padding = "0 6px";
+      dots.style.color = "var(--muted)";
+      paginationContainer.appendChild(dots);
+      return;
+    }
+
+    const btn = document.createElement("button");
+    btn.textContent = p;
+    if (p === currentPage) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      currentPage = p;
+      applyFiltersAndRender();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    paginationContainer.appendChild(btn);
+  });
+
+  const next = document.createElement("button");
+  next.textContent = "→";
+  next.disabled = currentPage === totalPages;
+  next.addEventListener("click", () => {
+    currentPage++;
+    applyFiltersAndRender();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  paginationContainer.appendChild(next);
+}
+
+function buildPageList(current, total) {
+  const delta = 2;
+  const range = [];
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+      range.push(i);
+    } else if (range[range.length - 1] !== "...") {
+      range.push("...");
+    }
+  }
+  return range;
+}
+
+searchInput?.addEventListener("input", () => {
+  currentPage = 1;
+  applyFiltersAndRender();
 });
 
-sortSelect.addEventListener("change", renderProducts);
-
-loadMoreButton.addEventListener("click", () => {
-  loadProducts();
+categorySelect?.addEventListener("change", () => {
+  currentPage = 1;
+  loadAllProducts();
 });
 
-loadProducts(true);
+sortSelect?.addEventListener("change", () => {
+  currentPage = 1;
+  applyFiltersAndRender();
+});
+
+loadAllProducts();

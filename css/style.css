@@ -742,3 +742,101 @@ button:active { transform: translateY(1px); }
     color: var(--accent);
     border: 1px solid var(--accent);
 }
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+}
+.pagination button {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 12px;
+    background: #FFFFFF;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.pagination button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.pagination button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+.pagination button:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+.admin-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+.admin-filters .filter-btn {
+    padding: 10px 18px;
+    background: #FFFFFF;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.admin-filters .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.admin-filters .filter-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.order-status {
+    display: inline-block;
+    padding: 4px 12px;
+    margin-left: 8px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+.order-status[data-status="Новый"] { background: #ffe9e0; color: #d9440d; }
+.order-status[data-status="В обработке"] { background: #fff3cd; color: #a07700; }
+.order-status[data-status="Отправлен"] { background: #d6e7ff; color: #1a4fa0; }
+.order-status[data-status="Доставлен"] { background: #d6f0dc; color: #0a5c36; }
+.order-status[data-status="Отменён"] { background: #ffd6d6; color: #b00020; }
+
+.order-user {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 4px 0 10px;
+}
+.order-user strong { color: var(--ink); font-weight: 700; }
+
+.order-items {
+    margin: 10px 0 12px;
+    padding: 10px 14px;
+    background: var(--surface-3);
+    border-radius: var(--r-sm);
+    font-size: 13px;
+    color: var(--ink-2);
+}
+.order-items div { padding: 3px 0; }

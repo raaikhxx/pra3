@@ -21,6 +21,10 @@ const productsContainer = document.getElementById("products");
 const ordersContainer = document.getElementById("orders");
 const usersContainer = document.getElementById("users");
 
+let allOrders = [];
+let currentOrderFilter = "all";
+let usersCache = {};
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     location.href = "login.html";
@@ -31,7 +35,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (!userSnapshot.exists() || userSnapshot.data().role !== "admin") {
     adminMessage.textContent = "У вас нет доступа к админ-панели.";
-    productForm.style.display = "none";
+    if (productForm) productForm.style.display = "none";
     return;
   }
 
@@ -40,27 +44,29 @@ onAuthStateChanged(auth, async (user) => {
   loadUsers();
 });
 
-productForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (productForm) {
+  productForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  try {
-    await addDoc(collection(db, "products"), {
-      name: document.getElementById("name").value.trim(),
-      description: document.getElementById("description").value.trim(),
-      price: Number(document.getElementById("price").value),
-      category: document.getElementById("category").value.trim(),
-      image: document.getElementById("image").value.trim(),
-      stock: Number(document.getElementById("stock").value),
-      createdAt: serverTimestamp(),
-    });
+    try {
+      await addDoc(collection(db, "products"), {
+        name: document.getElementById("name").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        price: Number(document.getElementById("price").value),
+        category: document.getElementById("category").value.trim(),
+        image: document.getElementById("image").value.trim(),
+        stock: Number(document.getElementById("stock").value),
+        createdAt: serverTimestamp(),
+      });
 
-    productForm.reset();
-    adminMessage.textContent = "Товар добавлен.";
-  } catch (error) {
-    console.error(error);
-    adminMessage.textContent = "Ошибка при добавлении товара.";
-  }
-});
+      productForm.reset();
+      adminMessage.textContent = "Товар добавлен.";
+    } catch (error) {
+      console.error(error);
+      adminMessage.textContent = "Ошибка при добавлении товара.";
+    }
+  });
+}
 
 function loadProducts() {
   onSnapshot(collection(db, "products"), (snapshot) => {
@@ -113,61 +119,15 @@ function loadProducts() {
   });
 }
 
-function loadOrders() {
-  const ordersQuery = query(
-    collection(db, "orders"),
-    where("status", "==", "Новый")
-  );
-
-  onSnapshot(ordersQuery, (snapshot) => {
-    ordersContainer.innerHTML = "";
-
-    if (snapshot.empty) {
-      ordersContainer.textContent = "Новых заказов нет.";
-      return;
-    }
-
-    snapshot.forEach((orderDoc) => {
-      const order = orderDoc.data();
-      const block = document.createElement("div");
-      block.className = "order";
-
-      const title = document.createElement("h3");
-      title.textContent = "Заказ #" + orderDoc.id;
-
-      const total = document.createElement("p");
-      total.textContent =
-        "Сумма: " + Number(order.total || 0).toLocaleString("ru-RU") + " ₸";
-
-      const status = document.createElement("select");
-
-      ["Новый", "В обработке", "Отправлен", "Доставлен", "Отменён"].forEach(
-        (value) => {
-          const option = document.createElement("option");
-          option.value = value;
-          option.textContent = value;
-          option.selected = value === order.status;
-          status.appendChild(option);
-        }
-      );
-
-      status.onchange = () =>
-        updateDoc(doc(db, "orders", orderDoc.id), {
-          status: status.value,
-        });
-
-      block.append(title, total, status);
-      ordersContainer.appendChild(block);
-    });
-  });
-}
-
 function loadUsers() {
   onSnapshot(collection(db, "users"), (snapshot) => {
+    usersCache = {};
     usersContainer.innerHTML = "";
 
     snapshot.forEach((userDoc) => {
       const user = userDoc.data();
+      usersCache[userDoc.id] = user;
+
       const block = document.createElement("div");
       block.className = "order";
 
@@ -195,5 +155,124 @@ function loadUsers() {
       block.append(name, email, role);
       usersContainer.appendChild(block);
     });
+
+    renderOrders();
   });
 }
+
+function loadOrders() {
+  onSnapshot(collection(db, "orders"), (snapshot) => {
+    allOrders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    allOrders.sort((a, b) => {
+      const ta = a.createdAt?.seconds || 0;
+      const tb = b.createdAt?.seconds || 0;
+      return tb - ta;
+    });
+    renderOrders();
+  });
+}
+
+function renderOrders() {
+  if (!ordersContainer) return;
+  ordersContainer.innerHTML = "";
+
+  let list = allOrders;
+  if (currentOrderFilter !== "all") {
+    list = list.filter((o) => o.status === currentOrderFilter);
+  }
+
+  if (!list.length) {
+    ordersContainer.textContent = "Заказов нет.";
+    return;
+  }
+
+  list.forEach((order) => {
+    const user = usersCache[order.userId] || {};
+
+    const block = document.createElement("div");
+    block.className = "order";
+
+    const title = document.createElement("h3");
+    title.textContent = "Заказ #" + order.id.slice(0, 8).toUpperCase();
+    block.appendChild(title);
+
+    const statusBadge = document.createElement("span");
+    statusBadge.className = "order-status";
+    statusBadge.dataset.status = order.status || "Новый";
+    statusBadge.textContent = order.status || "Новый";
+    title.appendChild(statusBadge);
+
+    const userLine = document.createElement("p");
+    userLine.className = "order-user";
+    userLine.innerHTML =
+      "Покупатель: <strong>" +
+      (user.name || user.email || "Неизвестный") +
+      "</strong>" +
+      (user.email ? " · " + user.email : "") +
+      (user.phone ? " · " + user.phone : "");
+    block.appendChild(userLine);
+
+    const addressLine = document.createElement("p");
+    addressLine.className = "order-user";
+    addressLine.innerHTML = "Адрес: <strong>" + (user.address || "не указан") + "</strong>";
+    block.appendChild(addressLine);
+
+    const items = document.createElement("div");
+    items.className = "order-items";
+    (order.items || []).forEach((it) => {
+      const row = document.createElement("div");
+      row.textContent =
+        `${it.name} × ${it.quantity} — ${Number(it.price).toLocaleString("ru-RU")} ₸` +
+        (it.size ? ` (размер ${it.size})` : "");
+      items.appendChild(row);
+    });
+    block.appendChild(items);
+
+    const total = document.createElement("p");
+    total.innerHTML =
+      "Сумма: <strong>" +
+      Number(order.total || 0).toLocaleString("ru-RU") +
+      " ₸</strong>";
+    block.appendChild(total);
+
+    const payment = document.createElement("p");
+    payment.textContent =
+      "Оплата: " +
+      (order.paymentMethod === "card" ? "Банковская карта" : "При получении");
+    block.appendChild(payment);
+
+    const statusLabel = document.createElement("p");
+    statusLabel.style.marginTop = "10px";
+    statusLabel.style.fontSize = "12px";
+    statusLabel.style.fontWeight = "700";
+    statusLabel.style.textTransform = "uppercase";
+    statusLabel.style.color = "var(--muted)";
+    statusLabel.textContent = "Изменить статус:";
+    block.appendChild(statusLabel);
+
+    const statusSelect = document.createElement("select");
+    ["Новый", "В обработке", "Отправлен", "Доставлен", "Отменён"].forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      option.selected = value === (order.status || "Новый");
+      statusSelect.appendChild(option);
+    });
+    statusSelect.onchange = () =>
+      updateDoc(doc(db, "orders", order.id), { status: statusSelect.value });
+    block.appendChild(statusSelect);
+
+    ordersContainer.appendChild(block);
+  });
+}
+
+document.querySelectorAll(".admin-filters .filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".admin-filters .filter-btn")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentOrderFilter = btn.dataset.status;
+    renderOrders();
+  });
+});
